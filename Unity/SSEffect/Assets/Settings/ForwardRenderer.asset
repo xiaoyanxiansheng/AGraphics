@@ -12,8 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de640fe3d0db1804a85f9fc8f5cadab6, type: 3}
   m_Name: ForwardRenderer
   m_EditorClassIdentifier: 
-  m_RendererFeatures: []
-  m_RendererFeatureMap: 
+  m_RendererFeatures:
+  - {fileID: 7610784897793734400}
+  - {fileID: 2054867915608411796}
+  m_RendererFeatureMap: 0037e7768af09e6994ce2f6a7b5b841c
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
   shaders:
@@ -42,3 +44,48 @@ MonoBehaviour:
   m_ShadowTransparentReceive: 1
   m_RenderingMode: 0
   m_AccurateGbufferNormals: 0
+--- !u!114 &2054867915608411796
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 976c3f49b85bc5c4fa57a1fc31efb3da, type: 3}
+  m_Name: NewSSAOFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  _setting:
+    textureSize: 1024
+    blurCount: 0
+    ssaoIntensity: 0.367
+    intensityScale: 10
+    intensityPower: 0
+    intensityThreshold: 0
+    depthOffset: 0.02
+    csShader: {fileID: 7200000, guid: 9e36b1e328bcb3e4c95e051726848799, type: 3}
+    resoveShader: {fileID: 4800000, guid: 8a7df730d13d0714b96c8108e57c0ef1, type: 3}
+--- !u!114 &7610784897793734400
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
+  m_Name: NewScreenSpaceAmbientOcclusion
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  m_Shader: {fileID: 4800000, guid: 0849e84e3d62649e8882e9d6f056a017, type: 3}
+  m_Settings:
+    Downsample: 0
+    Source: 1
+    NormalSamples: 1
+    Intensity: 8.53
+    DirectLightingStrength: 0.615
+    Radius: 0.22
+    SampleCount: 5

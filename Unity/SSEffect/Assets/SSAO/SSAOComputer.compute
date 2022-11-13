@@ -1,0 +1,101 @@
+#pragma kernel CSMain
+#pragma kernel CSBlur
+#pragma kernel CSResove
+
+#include "Packages/com.unity.render-pipelines.universal/Shaders/BakedLitInput.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
+SamplerState linearClampSampler;
+float4 _cameraResolution;
+float _textureSize;
+float _intensityScale;
+float _intensityPower;
+float _depthOffset;
+float _intensityThreshold;
+float _ssaoIntensity;
+
+float4x4 _WorldToCameraMatrix;
+
+Texture2D<float4> _CameraDepthTexture;
+Texture2D<float4> _CameraColorTexture;
+
+RWTexture2D<float4> _SSAORT;
+RWTexture2D<float4> _SSAOTEMPRT;
+RWTexture2D<float4> _SSAOTEMP2RT;
+
+float GetDiff(float d0 , float d1)
+{
+    d0 = LinearEyeDepth(d0,_ZBufferParams);
+    d1 = LinearEyeDepth(d1,_ZBufferParams);
+    float diff = d0 - d1;
+    // diff = lerp(diff,100 * diff,step(_depthOffset * 0.5,abs(diff)));
+    return diff;
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 pixelSize = 1 / _cameraResolution;
+    float2 uv = id.xy / _textureSize;
+    float d0 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv,0).r;//
+    float d1 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(-pixelSize.x,0),0).r;//_CameraDepthTexture[id.xy + int2(-1,0)].x;
+    float d2 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(0,pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(0,1)].x;
+    float d3 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(pixelSize.x,0),0).r;//_CameraDepthTexture[id.xy + int2(1,0)].x;
+    float d4 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(0,-pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(0,-1)].x;
+    float d5 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(-2*pixelSize.x,0),0).r;//_CameraDepthTexture[id.xy + int2(-2,0)].x;
+    float d6 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(0,2*pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(0,2)].x;
+    float d7 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(2*pixelSize.x,0),0).r;//_CameraDepthTexture[id.xy + int2(2,0)].x;
+    float d8 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(0,-2*pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(0,-2)].x;
+    float d9 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(-pixelSize.x,pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(-1,1)].x;
+    float d10 =_CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(pixelSize.x,pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(1,1)].x;
+    float d11 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(pixelSize.x,-pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(1,-1)].x;
+    float d12 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(-pixelSize.x,-pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(-1,-1)].x;
+    float d13 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(-2*pixelSize.x,2*pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(-2,2)].x;
+    float d14 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(2*pixelSize.x,2*pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(2,2)].x;
+    float d15 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(2*pixelSize.x,-2*pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(2,-2)].x;
+    float d16 = _CameraDepthTexture.SampleLevel(linearClampSampler,uv + float2(-2*pixelSize.x,-2*pixelSize.y),0).r;//_CameraDepthTexture[id.xy + int2(-2,-2)].x;
+
+    float diff = (
+        GetDiff(d0,d1)
+        + GetDiff(d0,d2)
+        + GetDiff(d0,d3)
+        + GetDiff(d0,d4)
+        + GetDiff(d0,d5)
+        + GetDiff(d0,d6)
+        + GetDiff(d0,d7)
+        + GetDiff(d0,d8)
+        + GetDiff(d0,d9)
+        + GetDiff(d0,d10)
+        + GetDiff(d0,d11)
+        + GetDiff(d0,d12)
+        + GetDiff(d0,d13)
+        + GetDiff(d0,d14)
+        + GetDiff(d0,d15)
+        + GetDiff(d0,d16)
+        ) * 0.0625;
+    diff = lerp(0,diff,step(diff,_depthOffset));
+    _SSAORT[id.xy] = lerp(0,pow(diff,_intensityPower) * _intensityScale,1-step(diff,0));
+}
+
+[numthreads(8,8,1)]
+void CSBlur (uint3 id : SV_DispatchThreadID)
+{
+    uint2 uv = id.xy;
+    _SSAORT[uv] = _SSAOTEMPRT[uv];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(-1,-1)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(0,-1)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(1,-1)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(1,0)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(1,1)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(0,1)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(-1,1)];
+    _SSAORT[uv] += _SSAOTEMPRT[uv+uint2(-1,0)];
+    _SSAORT[uv] /= 9;
+}
+
+[numthreads(8,8,1)]
+void CSResove (uint3 id : SV_DispatchThreadID)
+{
+    int2 uv = id.xy / _cameraResolution * int2(_textureSize,_textureSize);
+    _SSAOTEMP2RT[id.xy] = saturate(_SSAORT[uv]);//lerp(1,_ssaoIntensity,saturate(_SSAORT[uv])) * _CameraColorTexture[id.xy];
+}
